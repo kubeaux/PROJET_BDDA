@@ -1,0 +1,45 @@
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- IDEs ---
+# VS Code
+.vscode/
+# Eclipse
+.classpath
+.project
+.settings/
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# --- Build / Compilation ---
+# Java
+*.class
+*.jar
+*.war
+*.ear
+# C / C++
+*.o
+*.so
+*.a
+*.exe
+# Python (si utils)
+__pycache__/
+*.pyc
+
+# --- Logs & temp ---
+*.log
+*.tmp
+
+# --- SGBD Mini-projet ---
+# Répertoires de données générées
+DB/
+data/
+# Journaux WAL ou équivalents (si générés dans le projet)
+*.wal
+
+# --- Autres ---
+# Sauvegardes éditeur
+*~
