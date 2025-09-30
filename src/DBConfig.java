@@ -5,11 +5,6 @@ public class DBConfig {
         this.dbpath = dbpath;
     }
 
-    public String getDbpath() {
-        return dbpath;
-    }
-
-    // Méthode statique pour charger à partir d'un fichier texte
     public static DBConfig loadDBConfig(String fichierConfig) throws Exception {
         java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(fichierConfig));
         String line;
