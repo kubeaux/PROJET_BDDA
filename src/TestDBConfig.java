@@ -1,24 +1,29 @@
 public class TestDBConfig {
     public static void main(String[] args) {
         try {
-            // Test 1 : création directe
-            DBConfig config1 = new DBConfig("../DB");
-            System.out.println("Test 1 (constructeur direct) : " + config1);
+            // === Test 1 : Création directe ===
+            DBConfig config1 = new DBConfig("../DB",(byte) 64,16);
 
-            // Test 2 : création via fichier
+            System.out.println("Test 1 (constructeur direct) :");
+            System.out.println(config1);
+
+            // === Test 2 : Création via fichier de config ===
             DBConfig config2 = DBConfig.loadDBConfig("config.txt");
-            System.out.println("Test 2 (fichier config.txt) : " + config2);
+            System.out.println("\nTest 2 (lecture depuis config.txt) :");
+            System.out.println(config2);
 
-            // Test 3 : cas d'erreur
+            // === Test 3 : Fichier inexistant ===
             try {
                 DBConfig config3 = DBConfig.loadDBConfig("fichier_inexistant.txt");
+                System.out.println("\nTest 3 (ERREUR ATTENDUE) : ce test aurait dû échouer !");
                 System.out.println(config3);
             } catch (Exception e) {
-                System.out.println("Test 3 (erreur attendue) : " + e.getMessage());
+                System.out.println("\nTest 3 (fichier inexistant) : OK, erreur capturée : " + e.getMessage());
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
 }
