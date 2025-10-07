@@ -1,8 +1,9 @@
+
 public class TestDBConfig {
-    public static void main(String[] args) {
+    public static void main() {
         try {
             // === Test 1 : Création directe ===
-            DBConfig config1 = new DBConfig("../DB",(byte) 64,16);
+            DBConfig config1 = new DBConfig("../BinData/",64,16, 2048);
 
             System.out.println("Test 1 (constructeur direct) :");
             System.out.println(config1);

@@ -1,3 +1,4 @@
-dbpath=BinData/
+dbpath=../BinData/
 pagesize=64
 dm_maxfilecount=16
+dm_maxpageperfile=1024
