@@ -3,8 +3,6 @@ import java.util.*;
 
 /**
  * Gestionnaire d'espace disque (Disk Manager)
- * 
- * Inspiré du modèle du livre "Database Management Systems", Ramakrishnan & Gehrke (chapitre 9).
  * Ce module gère la lecture, l'écriture et l'allocation des pages disque.
  */
 public class DiskManager {
