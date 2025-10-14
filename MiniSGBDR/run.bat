@@ -10,6 +10,8 @@ rem Exécution des tests
 java -cp out TestDBConfig
 java -cp out TestDiskManager
 java -cp out TestBufferManager
+java -cp out TestRelation
+
 
 
 pause
