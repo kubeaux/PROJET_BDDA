@@ -1,4 +1,6 @@
 dbpath=../BinData/
-pagesize=64
-dm_maxfilecount=16
-dm_maxpageperfile=1024
+pageSize=128
+dm_maxFileCount=4
+dm_maxPagePerFile=1024
+bm_bufferCount=2
+bm_policy=LRU

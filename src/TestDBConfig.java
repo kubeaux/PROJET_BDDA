@@ -3,7 +3,7 @@ public class TestDBConfig {
     public static void main() {
         try {
             // === Test 1 : Création directe ===
-            DBConfig config1 = new DBConfig("../BinData/",64,16, 2048);
+            DBConfig config1 = new DBConfig("../BinData/",64,16, 2048,2,"LRU");
 
             System.out.println("Test 1 (constructeur direct) :");
             System.out.println(config1);

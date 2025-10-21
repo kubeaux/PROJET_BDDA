@@ -7,7 +7,7 @@ public class TestDiskManager {
     public static void main() {
         try {
             // Config : petit test
-            DBConfig config = new DBConfig("BinData/", 64, 4, 8); 
+            DBConfig config = new DBConfig("../BinData/",64,16, 2048,2,"LRU");
             // 4 fichiers max, 8 pages par fichier
             DiskManager dm = new DiskManager(config);
             dm.init();
@@ -26,12 +26,12 @@ public class TestDiskManager {
             }
 
             System.out.println("\n=== Écriture et lecture des pages ===");
-            byte[] buffer = new byte[config.getPagesize()];
+            byte[] buffer = new byte[config.getPageSize()];
             for (int i = 0; i < buffer.length; i++) buffer[i] = (byte) (i % 256);
 
             for (PageId page : allPages) {
                 dm.writePage(page, buffer);
-                byte[] readBuffer = new byte[config.getPagesize()];
+                byte[] readBuffer = new byte[config.getPageSize()];
                 dm.readPage(page, readBuffer);
 
                 boolean ok = true;

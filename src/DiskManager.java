@@ -15,10 +15,10 @@ public class DiskManager {
 
     public DiskManager(DBConfig config) {
         this.config = config;
-        this.pageSize = config.getPagesize(); // on la lit une seule fois ici
+        this.pageSize = config.getPageSize(); // on la lit une seule fois ici
         this.freePages = new LinkedList<>();
         this.openFiles = new HashMap<>();
-        this.binDataDir = new File(config.getDbpath());
+        this.binDataDir = new File(config.getDbPath());
     }
 
     /**
@@ -46,7 +46,7 @@ public class DiskManager {
 
         while (true) {
                         // Si on dépasse le nombre maximal de fichiers, plus d'allocation possible
-            if (fileIdx >= config.getDmMaxfilecount()) {
+            if (fileIdx >= config.getDmMaxFileCount()) {
                 throw new RuntimeException("Plus de place disponible : tous les fichiers BinData sont pleins !");
             }
 
@@ -62,7 +62,7 @@ public class DiskManager {
                     long fileSize = file.length();
                     int currentPageCount = (int) (fileSize / pageSize);
 
-                    if (currentPageCount < config.getDmMaxpageperfile()) {
+                    if (currentPageCount < config.getDmMaxPagePerFile()) {
                         try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
                             raf.setLength(fileSize + pageSize);
                             return new PageId(fileIdx, currentPageCount);

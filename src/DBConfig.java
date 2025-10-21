@@ -3,104 +3,107 @@ import java.io.FileReader;
 
 public class DBConfig {
     private String dbpath;
-    private int pagesize;
-    private int dm_maxfilecount;
-    private int dm_maxpageperfile;
+    private int pageSize;
+    private int dm_maxFileCount;
+    private int dm_maxPagePerFile;
+    private int bm_bufferCount;
+    private String bm_policy;
 
-    // public DBConfig(String dbpath, byte pagesize, int dm_maxfilecount) {
-    //     this.dbpath = dbpath;
-    //     this.pagesize = pagesize;
-    //     this.dm_maxfilecount = dm_maxfilecount;
-    // }
-
-    public DBConfig(String dbpath, int pagesize, int dm_maxfilecount, int dm_maxpageperfile) {
+    public DBConfig(String dbpath, int pageSize, int dm_maxFileCount, int dm_maxPagePerFile,
+                    int bm_bufferCount, String bm_policy) {
         this.dbpath = dbpath;
-        this.pagesize = pagesize;
-        this.dm_maxfilecount = dm_maxfilecount;
-        this.dm_maxpageperfile = dm_maxpageperfile;
+        this.pageSize = pageSize;
+        this.dm_maxFileCount = dm_maxFileCount;
+        this.dm_maxPagePerFile = dm_maxPagePerFile;
+        this.bm_bufferCount = bm_bufferCount;
+        this.bm_policy = bm_policy;
     }
 
-    // Getters et setters
-
-    public String getDbpath(){
+    // Getters
+    public String getDbPath() {
         return dbpath;
     }
 
-    public int getPagesize(){
-        return pagesize;
+    public int getPageSize() {
+        return pageSize;
     }
 
-    public int getDmMaxfilecount(){
-        return dm_maxfilecount;
+    public int getDmMaxFileCount() {
+        return dm_maxFileCount;
     }
 
-    public int getDmMaxpageperfile(){
-        return dm_maxpageperfile;
+    public int getDmMaxPagePerFile() {
+        return dm_maxPagePerFile;
     }
 
-    public void setPagesize(byte pagesize){
-        this.pagesize = pagesize;
+    public int getBmBufferCount() {
+        return bm_bufferCount;
     }
 
-    public void setDmMaxfilecount(int dm_maxfilecount){
-        this.dm_maxfilecount = dm_maxfilecount;
-    }
-
-    public void setDmMaxpageperfile(int dm_maxpageperfile){
-        this.dm_maxpageperfile = dm_maxpageperfile;
+    public String getBmPolicy() {
+        return bm_policy;
     }
 
     public static DBConfig loadDBConfig(String fichierConfig) throws Exception {
         BufferedReader reader = new BufferedReader(new FileReader(fichierConfig));
         String line;
         String dbpath = null;
-        Integer pagesize = null;
-        Integer dm_maxfilecount = null;
-        Integer dm_maxpageperfile = null;
+        Integer pageSize = null;
+        Integer dm_maxFileCount = null;
+        Integer dm_maxPagePerFile = null;
+        Integer bm_bufferCount = 10; // Valeur par défaut
+        String bm_policy = "LRU";    // Valeur par défaut
 
         while ((line = reader.readLine()) != null) {
             line = line.trim();
-            if (line.startsWith("dbpath")) {
-                String[] parts = line.split("=");
-                if (parts.length == 2) {
-                    dbpath = parts[1].trim();
-                }
-            } else if (line.startsWith("pagesize")) {
-                String[] parts = line.split("=");
-                if (parts.length == 2) {
-                    pagesize = Integer.parseInt(parts[1].trim());
-                }
-            } else if (line.startsWith("dm_maxfilecount")) {
-                String[] parts = line.split("=");
-                if (parts.length == 2) {
-                    dm_maxfilecount = Integer.parseInt(parts[1].trim());
-                }
-            } else if (line.startsWith("dm_maxpageperfile")) {
-                String[] parts = line.split("=");
-                if (parts.length == 2) {
-                    dm_maxpageperfile = Integer.parseInt(parts[1].trim());
-                }
+            if (line.isEmpty() || line.startsWith("#")) continue; // Ignorer les lignes vides ou commentaires
+
+            String[] parts = line.split("=");
+            if (parts.length != 2) continue;
+
+            String key = parts[0].trim().toLowerCase();
+            String value = parts[1].trim();
+
+            switch (key) {
+                case "dbpath":
+                    dbpath = value;
+                    break;
+                case "pageSize":
+                    pageSize = Integer.parseInt(value);
+                    break;
+                case "dm_maxFileCount":
+                    dm_maxFileCount = Integer.parseInt(value);
+                    break;
+                case "dm_maxPagePerFile":
+                    dm_maxPagePerFile = Integer.parseInt(value);
+                    break;
+                case "bm_bufferCount":
+                    bm_bufferCount = Integer.parseInt(value);
+                    break;
+                case "bm_policy":
+                    bm_policy = value.toUpperCase();
+                    break;
             }
         }
         reader.close();
 
-        if (dbpath == null || pagesize == null || dm_maxfilecount == null || dm_maxpageperfile == null ) {
+        // Vérification des champs obligatoires
+        if (dbpath == null || pageSize == null || dm_maxFileCount == null || dm_maxPagePerFile == null) {
             throw new Exception("Paramètres manquants dans le fichier de configuration : " + fichierConfig);
         }
 
-        DBConfig config = new DBConfig(dbpath, pagesize, dm_maxfilecount, dm_maxpageperfile);
-        return config;
+        return new DBConfig(dbpath, pageSize, dm_maxFileCount, dm_maxPagePerFile, bm_bufferCount, bm_policy);
     }
-
 
     @Override
     public String toString() {
         return "DBConfig{" +
                 "dbpath='" + dbpath + '\'' +
-                ", pagesize=" + pagesize +
-                ", dm_maxfilecount=" + dm_maxfilecount +
-                ", dm_maxpageperfile=" + dm_maxpageperfile +
+                ", pageSize=" + pageSize +
+                ", dm_maxFileCount=" + dm_maxFileCount +
+                ", dm_maxPagePerFile=" + dm_maxPagePerFile +
+                ", bm_bufferCount=" + bm_bufferCount +
+                ", bm_policy='" + bm_policy + '\'' +
                 '}';
     }
-
 }
