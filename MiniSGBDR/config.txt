@@ -1,0 +1,5 @@
+dbpath=../DB
+pageSize=4096
+dm_maxFileCount=4
+bm_bufferCount=2
+bm_policy=LRU
