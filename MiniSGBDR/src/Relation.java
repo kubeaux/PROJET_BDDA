@@ -12,6 +12,10 @@ public class Relation {
     public Relation(String name, List<ColumnInfo> columns) {
         this.name = name;
         this.columns = columns;
+        this.diskManager = diskManager;
+        this.bufferManager = bufferManager;
+        this.headerPageId = headerPageId;
+        this.slotsPerPage = slotsPerPage;
     }
 
     public String getName() {
