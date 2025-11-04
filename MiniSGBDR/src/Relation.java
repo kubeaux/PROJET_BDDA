@@ -4,6 +4,10 @@ import java.util.List;
 public class Relation {
     private String name;
     private List<ColumnInfo> columns;
+    private PageId headerPageId;
+    private int slotsPerPage;
+    private DiskManager diskManager;
+    private BufferManager bufferManager;
 
     public Relation(String name, List<ColumnInfo> columns) {
         this.name = name;
@@ -76,4 +80,6 @@ public class Relation {
             }
         }
     }
+
+
 }
