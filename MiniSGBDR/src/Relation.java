@@ -1,5 +1,6 @@
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.ArrayList;
 
 public class Relation {
     private String name;
@@ -8,14 +9,37 @@ public class Relation {
     private int slotsPerPage;
     private DiskManager diskManager;
     private BufferManager bufferManager;
+    private DBConfig dbConfig;
 
-    public Relation(String name, List<ColumnInfo> columns) {
+    private static int INVALID_FILE_IDX = -1;
+    private static int INVALID_PAGE_IDX = -1;
+    private static int HP_FULL_HEAD_OFFSET = 0;
+    private static int HP_FREE_HEAD_OFFSET = 8;
+    private static int DP_PREV_PAGE_OFFSET = 0;
+    private static int DP_NEXT_PAGE_OFFSET = 8;
+    private static int DP_HEADER_SIZE = 16;
+
+    public Relation(String name, 
+                    List<ColumnInfo> columns,
+                    PageId headerPageId,
+                    DiskManager diskManager,
+                    BufferManager bufferManager,
+                    DBConfig dbConfig) throws Exception {
         this.name = name;
         this.columns = columns;
+
         this.diskManager = diskManager;
         this.bufferManager = bufferManager;
         this.headerPageId = headerPageId;
-        this.slotsPerPage = slotsPerPage;
+        this.dbConfig = dbConfig;
+
+        int recordSize = computeRecordSize();
+        this.slotsPerPage = (dbConfig.getPageSize() - DP_HEADER_SIZE) / (recordSize + 1);
+        if (this.slotsPerPage <= 0) {
+            throw new Exception("Page trop petite pour stocker un record");
+        }
+
+        initHeaderPageIfNeeded();
     }
 
     public String getName() {
@@ -24,6 +48,69 @@ public class Relation {
 
     public List<ColumnInfo> getColumns() {
         return columns;
+    }
+
+    private int computeRecordSize() {
+        int size = 0;
+        for (ColumnInfo col : columns) {
+            String type = col.getType();
+            if (type.equals("INT") || type.equals("FLOAT")) {
+                size += 4;
+            } else if (type.startsWith("CHAR(")) {
+                int n = Integer.parseInt(type.substring(5, type.length() - 1));
+                size += n;
+            } else if (type.startsWith("VARCHAR(")) {
+                int n = Integer.parseInt(type.substring(8, type.length() - 1));
+                size += n;
+            } else {
+                throw new RuntimeException("Type non supporté: " + type);
+            }
+        }
+        return size;
+    }
+
+    private void initHeaderPageIfNeeded() throws Exception {
+        byte[] header = bufferManager.GetPage(headerPageId);
+        ByteBuffer bb = ByteBuffer.wrap(header);
+
+        int fullFile = bb.getInt(HP_FULL_HEAD_OFFSET);
+        int fullPage = bb.getInt(HP_FULL_HEAD_OFFSET + 4);
+        int freeFile = bb.getInt(HP_FREE_HEAD_OFFSET);
+        int freePage = bb.getInt(HP_FREE_HEAD_OFFSET + 4);
+
+        boolean uninitialized = fullFile == 0 && fullPage == 0 && freeFile == 0 && freePage == 0;
+        
+        if (uninitialized) {
+            bb.putInt(HP_FULL_HEAD_OFFSET, INVALID_FILE_IDX);
+            bb.putInt(HP_FULL_HEAD_OFFSET + 4, INVALID_PAGE_IDX);
+            bb.putInt(HP_FREE_HEAD_OFFSET, INVALID_FILE_IDX);
+            bb.putInt(HP_FREE_HEAD_OFFSET + 4, INVALID_PAGE_IDX);
+            bufferManager.FreePage(headerPageId, true);
+        } else {
+            bufferManager.FreePage(headerPageId, false);
+        }
+        
+    }
+
+    private PageId readPageId(byte[] page, int offset) {
+        ByteBuffer bb = ByteBuffer.wrap(page);
+        int fileIdx = bb.getInt(offset);
+        int pageIdx = bb.getInt(offset + 4);
+        if (fileIdx == INVALID_FILE_IDX && pageIdx == INVALID_PAGE_IDX) {
+            return null;
+        }
+        return new PageId(fileIdx, pageIdx);
+    }
+
+    private void writePageId(byte[] page, int offset, PageId pid) {
+        ByteBuffer bb = ByteBuffer.wrap(page);
+        if (pid == null) {
+            bb.putInt(offset, INVALID_FILE_IDX);
+            bb.putInt(offset + 4, INVALID_PAGE_IDX);
+        } else {
+            bb.putInt(offset, pid.getFileIdx());
+            bb.putInt(offset + 4, pid.getPageIdx());
+        }
     }
 
     public void writeRecordToBuffer(Record record, ByteBuffer buffer, int pos) {
