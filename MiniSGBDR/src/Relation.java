@@ -113,6 +113,56 @@ public class Relation {
         }
     }
 
+    private void addPageToList(PageId pageId, boolean fullList) throws Exception {
+        byte[] header = bufferManager.GetPage(headerPageId);
+        int headOffset = fullList ? HP_FULL_HEAD_OFFSET : HP_FREE_HEAD_OFFSET;
+        PageId head = readPageId(header, headOffset);
+
+        byte[] page = bufferManager.GetPage(pageId);
+        writePageId(page, DP_PREV_PAGE_OFFSET, null);
+        writePageId(page, DP_NEXT_PAGE_OFFSET, head);
+        bufferManager.FreePage(pageId, true);
+
+        if (head != null) {
+            byte[] headPage = bufferManager.GetPage(head);
+            writePageId(headPage, DP_PREV_PAGE_OFFSET, pageId);
+            bufferManager.FreePage(head, true);
+        }
+
+        writePageId(header, headOffset, pageId);
+        bufferManager.FreePage(headerPageId, true);
+    }
+
+    private void removePageFromList(PageId pageId, boolean fullList) throws Exception {
+        byte[] header = bufferManager.GetPage(headerPageId);
+        int headOffset = fullList ? HP_FULL_HEAD_OFFSET : HP_FREE_HEAD_OFFSET;
+        PageId head = readPageId(header, headOffset);
+
+        byte[] page = bufferManager.GetPage(pageId);
+        PageId prev = readPageId(page, DP_PREV_PAGE_OFFSET);
+        PageId next = readPageId(page, DP_NEXT_PAGE_OFFSET);
+
+        if (head != null && head.getFileIdx() == pageId.getFileIdx() && head.getPageIdx() == pageId.getPageIdx()) {
+            writePageId(header, headOffset, next);
+        }
+
+        if (prev != null) {
+            byte[] prevPage = bufferManager.GetPage(prev);
+            writePageId(prevPage, DP_NEXT_PAGE_OFFSET, next);
+            bufferManager.FreePage(prev, true);
+        }
+        if (next != null) {
+            byte[] nextPage = bufferManager.GetPage(next);
+            writePageId(nextPage, DP_PREV_PAGE_OFFSET, prev);
+            bufferManager.FreePage(next, true);
+        }
+
+        writePageId(page, DP_PREV_PAGE_OFFSET, null);
+        writePageId(page, DP_NEXT_PAGE_OFFSET, null);
+        bufferManager.FreePage(pageId, true);
+        bufferManager.FreePage(headerPageId, true);
+    }
+
     public void writeRecordToBuffer(Record record, ByteBuffer buffer, int pos) {
         buffer.position(pos);
         List<String> values = record.getValues();
@@ -172,76 +222,18 @@ public class Relation {
         }
     }
 
-    public void addDataPage() {
-        if (diskManager == null || bufferManager == null) {
-            throw new IllegalStateException("DiskManager et BufferManager pas définis");
+    public void addDataPage() throws Exception {
+        PageId newPid = diskManager.AllocPage();
+
+        byte[] page = bufferManager.GetPage(newPid);
+        for (int i = 0; i < page.length; i++) {
+            page[i] = 0;
         }
-        if (headerPageId == null || headerPageId.getFileIdx() < 0 || headerPageId.getPageIdx() < 0) {
-            throw new IllegalStateException("HeaderPageId invalide");
-        }
 
-        byte[] headerBuffer = null;
-        boolean headerDirty = false;
+        writePageId(page, DP_PREV_PAGE_OFFSET, null);
+        writePageId(page, DP_NEXT_PAGE_OFFSET, null);
+        bufferManager.FreePage(newPid, true);
 
-        try {
-            PageId newPageId = diskManager.AllocPage();
-
-            headerBuffer = bufferManager.GetPage(headerPageId);
-            ByteBuffer headerView = ByteBuffer.wrap(headerBuffer);
-            int freeFileIdx = headerView.getInt(8);
-            int freePageIdx = headerView.getInt(12);
-
-            PageId oldHead = null;
-            if (freeFileIdx >= 0 && freePageIdx >= 0) {
-                oldHead = newPageId(freeFileIdx, freePageIdx);
-            }  
-
-            byte[] newPageBuffer = bufferManager.getPage(newPageId);
-            try {
-                ByteBuffer newPageView = ByteBuffer.wrap(newPageBuffer);
-
-                newPageView.putInt(0, -1);
-                newPageView.putInt(4, -1);
-                if (oldHead != null) {
-                    newPageView.putInt(8, oldHead.getFileIdx());
-                    newPageView.putInt(12, oldHead.getPageIdx);
-                } else {
-                    newPageView.putInt(8, -1);
-                    newPageView.putInt(12, -1);
-                }
-                newPageView.putInt(16, 0);
-
-                if (slotsPerPage > 0) {
-                    int mapStart = DATA_PAGE_HEADER_SIZE;
-                    for (int i = 0; i < slotsPerPage && mapStart + i < newPageBuffer.length; i++) {
-                        newPageBuffer[mapStart + i] = 0;
-                    }
-                }
-            } finally {
-                bufferManager.FreePage(newPageId, true);
-            }
-
-            if (oldHead != null) {
-                byte[] oldHeadBuffer = bufferManager.GetPage(oldHead);
-                try {
-                    ByteBuffer oldHeadView = ByteBuffer.wrap(oldHeadBuffer);
-                    oldHeadView.putInt(0, newPageId.getFileIdx());
-                    oldHeadView.putInt(4, newPageId.getPageIdx);
-                } finally {
-                    bufferManager.FreePage(oldHead, true);
-                }
-            }
-
-            headerView.putInt(8, newPageId.getFileIdx());
-            headerView.putInt(12, newPageId.getPageIdx());
-            headerDirty = true;
-
-        } catch (Exception e) {
-            throw new RuntimeException("Problème lors de l'ajout d'une page de données", e);
-        } finally {
-            if (headerBuffer != null) {
-                bufferManager.FreePage(headerPageId, headerDirty);
-            }
-        }
+        addPageToList(newPid, false);
     }
 }
