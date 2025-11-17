@@ -163,6 +163,36 @@ public class Relation {
         bufferManager.FreePage(headerPageId, true);
     }
 
+    public PageId getFreeDataPageId(int sizeRecord) throws Exception {
+        byte[] header = bufferManager.GetPage(headerPageId);
+        PageId current = readPageId(header, HP_FREE_HEAD_OFFSET);
+        bufferManager.FreePage(headerPageId, false);
+
+        while (current != null) {
+            byte[] page = bufferManager.GetPage(current);
+            int bitmapStart = DP_HEADER_SIZE;
+
+            int freeSlot = -1;
+            for (int i = 0; i < slotsPerPage; i++) {
+                if (page[bitmapStart + i] == 0) {
+                    freeSlot = i;
+                    break;
+                }
+            }
+            bufferManager.FreePage(current, false);
+
+            if (freeSlot != -1) {
+                return current;
+            }
+
+            page = bufferManager.GetPage(current);
+            PageId next = readPageId(page, DP_NEXT_PAGE_OFFSET);
+            bufferManager.FreePage(current, false);
+            current = next;
+        }
+        return null;
+    }
+
     public void writeRecordToBuffer(Record record, ByteBuffer buffer, int pos) {
         buffer.position(pos);
         List<String> values = record.getValues();
