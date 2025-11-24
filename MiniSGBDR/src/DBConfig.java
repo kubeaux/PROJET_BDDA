@@ -37,7 +37,7 @@ public class DBConfig {
     }
 
     public static DBConfig loadDBConfig(String fichierConfig) throws Exception {
-        java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(fichierConfig));
+        BufferedReader reader = new BufferedReader(new FileReader(fichierConfig));
         String line;
         String dbpath = null;
         int pageSize = 0;
