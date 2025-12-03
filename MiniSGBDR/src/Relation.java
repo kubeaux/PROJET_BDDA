@@ -36,6 +36,49 @@ public class Relation {
         int headerSize = 20;
         this.slotCount = (pageSize - headerSize) / (1 + recordSize);
     }
+    public void addDataPage() throws Exception {
+        PageId newPageId = diskManager.AllocPage();
+        byte[] pageData = bufferManager.GetPage(newPageId);
+        ByteBuffer buffer = ByteBuffer.wrap(pageData);
+
+        byte[] headerData = bufferManager.GetPage(this.headerPageId);
+        ByteBuffer headerBuffer = ByteBuffer.wrap(headerData);
+
+        headerBuffer.position(8);
+        int oldFreeFileIdx = headerBuffer.getInt();
+        int oldFreePageIdx = headerBuffer.getInt();
+
+        headerBuffer.position(8);
+        headerBuffer.putInt(newPageId.getFileIdx());
+        headerBuffer.putInt(newPageId.getPageIdx());
+
+        buffer.position(0);
+        buffer.putInt(oldFreeFileIdx);
+        buffer.putInt(oldFreePageIdx);
+
+        buffer.putInt(-1);
+        buffer.putInt(-1);
+
+        int bytemapOffset = 20;
+        for (int i = 0; i < slotCount; i++) {
+            buffer.put(bytemapOffset + i, (byte) 0);
+        }
+
+        if (oldFreePageIdx != -1) {
+            PageId oldFreeId = new PageId(oldFreeFileIdx, oldFreePageIdx);
+            byte[] oldFreeData = bufferManager.GetPage(oldFreeId);
+            ByteBuffer oldFreeBuff = ByteBuffer.wrap(oldFreeData);
+
+            oldFreeBuff.position(8);
+            oldFreeBuff.putInt(newPageId.getFileIdx());
+            oldFreeBuff.putInt(newPageId.getPageIdx());
+            bufferManager.FreePage(oldFreeId, true);
+        }
+
+        bufferManager.FreePage(this.headerPageId, true);
+        bufferManager.FreePage(newPageId, true);
+    }
+    
 
     public String getName() {
         return name;
@@ -247,18 +290,4 @@ public class Relation {
         }
     }
 
-    public void addDataPage() throws Exception {
-        PageId newPid = diskManager.AllocPage();
-
-        byte[] page = bufferManager.GetPage(newPid);
-        for (int i = 0; i < page.length; i++) {
-            page[i] = 0;
-        }
-
-        writePageId(page, DP_PREV_PAGE_OFFSET, null);
-        writePageId(page, DP_NEXT_PAGE_OFFSET, null);
-        bufferManager.FreePage(newPid, true);
-
-        addPageToList(newPid, false);
-    }
 }
