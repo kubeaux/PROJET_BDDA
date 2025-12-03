@@ -79,6 +79,38 @@ public class Relation {
         bufferManager.FreePage(newPageId, true);
     }
     
+    public PageId getFreeDataPageId(int sizeRecord) throws Exception {
+        byte[] headerData = bufferManager.GetPage(this.headerPageId);
+        ByteBuffer headerBuffer = ByteBuffer.wrap(headerData);
+
+        headerBuffer.position(8);
+        int currentFileIdx = headerBuffer.getInt();
+        int currentPageIdx = headerBuffer.getInt();
+
+        bufferManager.FreePage(this.headerPageId, false);
+
+        while (currentPageIdx != -1) {
+            PageId currentId = new PageId(currentFileIdx, currentPageIdx);
+            byte[] pageData = bufferManager.GetPage(currentId);
+            ByteBuffer pageBuffer = ByteBuffer.wrap(pageData);
+
+            int bytemapOffset = 20;
+            for (int i = 0; i < slotCount; i++) {
+                if (pageBuffer.get(bytemapOffset + i) == 0) {
+                    bufferManager.FreePage(currentId, false);
+                    return currentId;
+                }
+            }
+
+            pageBuffer.position(0);
+            currentFileIdx = pageBuffer.getInt();
+            currentPageIdx = pageBuffer.getInt();
+
+            bufferManager.FreePage(currentId, false);
+        }
+
+        return null;
+    }
 
     public String getName() {
         return name;
@@ -199,36 +231,6 @@ public class Relation {
         writePageId(page, DP_NEXT_PAGE_OFFSET, null);
         bufferManager.FreePage(pageId, true);
         bufferManager.FreePage(headerPageId, true);
-    }
-
-    public PageId getFreeDataPageId(int sizeRecord) throws Exception {
-        byte[] header = bufferManager.GetPage(headerPageId);
-        PageId current = readPageId(header, HP_FREE_HEAD_OFFSET);
-        bufferManager.FreePage(headerPageId, false);
-
-        while (current != null) {
-            byte[] page = bufferManager.GetPage(current);
-            int bitmapStart = DP_HEADER_SIZE;
-
-            int freeSlot = -1;
-            for (int i = 0; i < slotsPerPage; i++) {
-                if (page[bitmapStart + i] == 0) {
-                    freeSlot = i;
-                    break;
-                }
-            }
-            bufferManager.FreePage(current, false);
-
-            if (freeSlot != -1) {
-                return current;
-            }
-
-            page = bufferManager.GetPage(current);
-            PageId next = readPageId(page, DP_NEXT_PAGE_OFFSET);
-            bufferManager.FreePage(current, false);
-            current = next;
-        }
-        return null;
     }
 
     public void writeRecordToBuffer(Record record, ByteBuffer buffer, int pos) {
