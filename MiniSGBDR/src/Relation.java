@@ -5,41 +5,36 @@ import java.util.ArrayList;
 public class Relation {
     private String name;
     private List<ColumnInfo> columns;
+
     private PageId headerPageId;
-    private int slotsPerPage;
+    private int slotCount;
     private DiskManager diskManager;
     private BufferManager bufferManager;
-    private DBConfig dbConfig;
+    private int recordSize;
+    private int headerPageOffset = 8;
 
-    private static int INVALID_FILE_IDX = -1;
-    private static int INVALID_PAGE_IDX = -1;
-    private static int HP_FULL_HEAD_OFFSET = 0;
-    private static int HP_FREE_HEAD_OFFSET = 8;
-    private static int DP_PREV_PAGE_OFFSET = 0;
-    private static int DP_NEXT_PAGE_OFFSET = 8;
-    private static int DP_HEADER_SIZE = 16;
-
-    public Relation(String name, 
-                    List<ColumnInfo> columns,
-                    PageId headerPageId,
-                    DiskManager diskManager,
-                    BufferManager bufferManager,
-                    DBConfig dbConfig) throws Exception {
+    public Relation(String name, List<ColumnInfo> columns,PageId headerPageId,DiskManager dm,BufferManager bm) {
         this.name = name;
         this.columns = columns;
-
-        this.diskManager = diskManager;
-        this.bufferManager = bufferManager;
+        this.diskManager = dm;
+        this.bufferManager = bm;
         this.headerPageId = headerPageId;
-        this.dbConfig = dbConfig;
 
-        int recordSize = computeRecordSize();
-        this.slotsPerPage = (dbConfig.getPageSize() - DP_HEADER_SIZE) / (recordSize + 1);
-        if (this.slotsPerPage <= 0) {
-            throw new Exception("Page trop petite pour stocker un record");
+        this.recordSize = 0;
+        for (ColumnInfo col : columns) {
+            String type = col.getType();
+            if (type.equals("INT")) recordSize += 4;
+            else if (type.equals("FLOAT")) recordSize += 4;
+            else if (type.startsWith("CHAR")) {
+                recordSize += Integer.parseInt(type.substring(5, type.length() - 1)) * 2;
+            } else if (type.startsWith("VARCHAR")) {
+                recordSize += Integer.parseInt(type.substring(8, type.length() - 1)) * 2;
+            }
         }
 
-        initHeaderPageIfNeeded();
+        int pageSize = 4098;
+        int headerSize = 20;
+        this.slotCount = (pageSize - headerSize) / (1 + recordSize);
     }
 
     public String getName() {
