@@ -112,6 +112,35 @@ public class Relation {
         return null;
     }
 
+    public RecordId writeRecordToDataPage(Record record, PageId pageId) throws Exception {
+        byte[] pageData = bufferManager.GetPage(pageId);
+        ByteBuffer buffer = ByteBuffer.wrap(pageData);
+
+        int bytemapOffset = 20;
+        int slotFound = -1;
+
+        for (int i = 0; i < slotCount; i++) {
+            if (buffer.get(bytemapOffset + i) == 0) {
+                slotFound = i;
+                buffer.put(bytemapOffset + i, (byte) 1);
+                break;
+            }
+        }
+
+        if (slotFound == -1) {
+            bufferManager.FreePage(pageId, false);
+            throw new Exception("Erreur: Pas de slot libre sur la page fournie");
+        }
+
+        int dataStartOffset = bytemapOffset + slotCount;
+        int recordOffset = dataStartOffset + (slotFound * recordSize);
+
+        writeRecordToBuffer(record, buffer, recordOffset);
+
+        bufferManager.FreePage(pageId, true);
+        return new RecordId(pageId, slotFound);
+    }
+
     public String getName() {
         return name;
     }
