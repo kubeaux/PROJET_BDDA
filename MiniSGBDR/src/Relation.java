@@ -141,125 +141,33 @@ public class Relation {
         return new RecordId(pageId, slotFound);
     }
 
+    public List<Record> getRecordsInDataPage(PageId pageId) throws Exception {
+        List<Record> records = new ArrayList<>();
+        byte[] pageData = bufferManager.GetPage(pageId);
+        ByteBuffer buffer = ByteBuffer.wrap(pageData);
+
+        int bytemapOffset = 20;
+        int dataStartOffset = bytemapOffset + slotCount;
+
+        for (int i = 0; i < slotCount; i++) {
+            if (buffer.get(bytemapOffset + i) == 1) {
+                int recordOffset = dataStartOffset + (i * recordSize);
+                Record r = new Record();
+                readFromBuffer(r, buffer, recordOffset);
+                records.add(r);
+            }
+        }
+
+        bufferManager.FreePage(pageId, false);
+        return records;
+    }
+
     public String getName() {
         return name;
     }
 
     public List<ColumnInfo> getColumns() {
         return columns;
-    }
-
-    private int computeRecordSize() {
-        int size = 0;
-        for (ColumnInfo col : columns) {
-            String type = col.getType();
-            if (type.equals("INT") || type.equals("FLOAT")) {
-                size += 4;
-            } else if (type.startsWith("CHAR(")) {
-                int n = Integer.parseInt(type.substring(5, type.length() - 1));
-                size += n;
-            } else if (type.startsWith("VARCHAR(")) {
-                int n = Integer.parseInt(type.substring(8, type.length() - 1));
-                size += n;
-            } else {
-                throw new RuntimeException("Type non supporté: " + type);
-            }
-        }
-        return size;
-    }
-
-    private void initHeaderPageIfNeeded() throws Exception {
-        byte[] header = bufferManager.GetPage(headerPageId);
-        ByteBuffer bb = ByteBuffer.wrap(header);
-
-        int fullFile = bb.getInt(HP_FULL_HEAD_OFFSET);
-        int fullPage = bb.getInt(HP_FULL_HEAD_OFFSET + 4);
-        int freeFile = bb.getInt(HP_FREE_HEAD_OFFSET);
-        int freePage = bb.getInt(HP_FREE_HEAD_OFFSET + 4);
-
-        boolean uninitialized = fullFile == 0 && fullPage == 0 && freeFile == 0 && freePage == 0;
-        
-        if (uninitialized) {
-            bb.putInt(HP_FULL_HEAD_OFFSET, INVALID_FILE_IDX);
-            bb.putInt(HP_FULL_HEAD_OFFSET + 4, INVALID_PAGE_IDX);
-            bb.putInt(HP_FREE_HEAD_OFFSET, INVALID_FILE_IDX);
-            bb.putInt(HP_FREE_HEAD_OFFSET + 4, INVALID_PAGE_IDX);
-            bufferManager.FreePage(headerPageId, true);
-        } else {
-            bufferManager.FreePage(headerPageId, false);
-        }
-        
-    }
-
-    private PageId readPageId(byte[] page, int offset) {
-        ByteBuffer bb = ByteBuffer.wrap(page);
-        int fileIdx = bb.getInt(offset);
-        int pageIdx = bb.getInt(offset + 4);
-        if (fileIdx == INVALID_FILE_IDX && pageIdx == INVALID_PAGE_IDX) {
-            return null;
-        }
-        return new PageId(fileIdx, pageIdx);
-    }
-
-    private void writePageId(byte[] page, int offset, PageId pid) {
-        ByteBuffer bb = ByteBuffer.wrap(page);
-        if (pid == null) {
-            bb.putInt(offset, INVALID_FILE_IDX);
-            bb.putInt(offset + 4, INVALID_PAGE_IDX);
-        } else {
-            bb.putInt(offset, pid.getFileIdx());
-            bb.putInt(offset + 4, pid.getPageIdx());
-        }
-    }
-
-    private void addPageToList(PageId pageId, boolean fullList) throws Exception {
-        byte[] header = bufferManager.GetPage(headerPageId);
-        int headOffset = fullList ? HP_FULL_HEAD_OFFSET : HP_FREE_HEAD_OFFSET;
-        PageId head = readPageId(header, headOffset);
-
-        byte[] page = bufferManager.GetPage(pageId);
-        writePageId(page, DP_PREV_PAGE_OFFSET, null);
-        writePageId(page, DP_NEXT_PAGE_OFFSET, head);
-        bufferManager.FreePage(pageId, true);
-
-        if (head != null) {
-            byte[] headPage = bufferManager.GetPage(head);
-            writePageId(headPage, DP_PREV_PAGE_OFFSET, pageId);
-            bufferManager.FreePage(head, true);
-        }
-
-        writePageId(header, headOffset, pageId);
-        bufferManager.FreePage(headerPageId, true);
-    }
-
-    private void removePageFromList(PageId pageId, boolean fullList) throws Exception {
-        byte[] header = bufferManager.GetPage(headerPageId);
-        int headOffset = fullList ? HP_FULL_HEAD_OFFSET : HP_FREE_HEAD_OFFSET;
-        PageId head = readPageId(header, headOffset);
-
-        byte[] page = bufferManager.GetPage(pageId);
-        PageId prev = readPageId(page, DP_PREV_PAGE_OFFSET);
-        PageId next = readPageId(page, DP_NEXT_PAGE_OFFSET);
-
-        if (head != null && head.getFileIdx() == pageId.getFileIdx() && head.getPageIdx() == pageId.getPageIdx()) {
-            writePageId(header, headOffset, next);
-        }
-
-        if (prev != null) {
-            byte[] prevPage = bufferManager.GetPage(prev);
-            writePageId(prevPage, DP_NEXT_PAGE_OFFSET, next);
-            bufferManager.FreePage(prev, true);
-        }
-        if (next != null) {
-            byte[] nextPage = bufferManager.GetPage(next);
-            writePageId(nextPage, DP_PREV_PAGE_OFFSET, prev);
-            bufferManager.FreePage(next, true);
-        }
-
-        writePageId(page, DP_PREV_PAGE_OFFSET, null);
-        writePageId(page, DP_NEXT_PAGE_OFFSET, null);
-        bufferManager.FreePage(pageId, true);
-        bufferManager.FreePage(headerPageId, true);
     }
 
     public void writeRecordToBuffer(Record record, ByteBuffer buffer, int pos) {
